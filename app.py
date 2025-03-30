@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import qrcode
 import os
+from sqlalchemy.exc import IntegrityError
 
 # إعداد Flask و SQLAlchemy
 app = Flask(__name__)
@@ -29,6 +30,11 @@ with app.app_context():
 @app.route('/sign_up', methods=['GET', 'POST'])
 def sign_up():
     if request.method == 'POST':
+        # Check if the phone number already exists
+        existing_user = User.query.filter_by(phone=request.form['phone']).first()
+        if existing_user:
+            return "رقم الهاتف موجود بالفعل، يرجى إدخال رقم آخر."
+        
         user_data = User(
             name=request.form['name'],
             table_number=request.form['table_number'],
@@ -39,7 +45,7 @@ def sign_up():
             date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         )
 
-        # تحقق من صحة البيانات
+        # Check that the people count matches the sum of males and females
         try:
             people = int(request.form['people'])
             males = int(request.form['males'])
@@ -53,11 +59,15 @@ def sign_up():
         if not user_data.phone.isdigit() or len(user_data.phone) < 6:
             return "رقم الهاتف يجب أن يكون أرقام فقط وطوله لا يقل عن 6 أرقام."
 
-        # حفظ البيانات في قاعدة البيانات
-        db.session.add(user_data)
-        db.session.commit()
+        # Save the data to the database
+        try:
+            db.session.add(user_data)
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()  # Rollback the session if an error occurs
+            return "حدث خطأ أثناء حفظ البيانات. يرجى المحاولة مرة أخرى."
 
-        # توليد QR/Barcode
+        # Generate QR/Barcode
         code_type = request.form['code_type']
         file_path = os.path.join("static/qrcodes", f"{user_data.phone}.{code_type}.png")
         
