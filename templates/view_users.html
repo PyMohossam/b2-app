@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>عرض الزوار</title>
+</head>
+<body>
+    <h1>عرض الزوار</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>الاسم</th>
+                <th>رقم الهاتف</th>
+                <th>رقم الطاولة</th>
+                <th>عدد الأشخاص</th>
+                <th>الذكور</th>
+                <th>الإناث</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+                <tr>
+                    <td>{{ user.name }}</td>
+                    <td>{{ user.phone }}</td>
+                    <td>{{ user.table_number }}</td>
+                    <td>{{ user.people }}</td>
+                    <td>{{ user.males }}</td>
+                    <td>{{ user.females }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

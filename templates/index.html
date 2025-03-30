@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الرئيسية</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #007BFF;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+        header h1 {
+            margin: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px 0;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>أهلاً بك في نظام التسجيل</h1>
+</header>
+
+<div class="container">
+    <h2>الصفحة الرئيسية</h2>
+    <p>من هنا يمكنك الوصول إلى صفحات التسجيل والتقارير.</p>
+    
+    <a href="{{ url_for('sign_up') }}" class="btn">تسجيل جديد</a>
+    <a href="{{ url_for('view_users') }}" class="btn">عرض الزوار</a>
+</div>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الرئيسية</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #007BFF;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+        header h1 {
+            margin: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px 0;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>أهلاً بك في نظام التسجيل</h1>
+</header>
+
+<div class="container">
+    <h2>الصفحة الرئيسية</h2>
+    <p>من هنا يمكنك الوصول إلى صفحات التسجيل والتقارير.</p>
+    
+    <a href="{{ url_for('sign_up') }}" class="btn">تسجيل جديد</a>
+    <a href="{{ url_for('view_users') }}" class="btn">عرض الزوار</a>
+</div>
+
+</body>
+</html>

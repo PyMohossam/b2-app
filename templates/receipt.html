@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>إيصال</title>
+</head>
+<body>
+    <h1>إيصال المستخدم: {{ user['name'] }}</h1>
+    <p>رقم الطاولة: {{ user['table_number'] }}</p>
+    <p>عدد الأشخاص: {{ user['people'] }}</p>
+    <p>عدد الذكور: {{ user['males'] }}</p>
+    <p>عدد الإناث: {{ user['females'] }}</p>
+    <p>رقم الهاتف: {{ user['phone'] }}</p>
+    <img src="{{ qr_path }}" alt="QR Code">
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>تسجيل جديد</title>
+</head>
+<body>
+    <h1>تسجيل جديد</h1>
+    <form method="POST">
+        <label for="name">الاسم:</label><br>
+        <input type="text" id="name" name="name"><br><br>
+
+        <label for="table_number">رقم الطاولة:</label><br>
+        <input type="text" id="table_number" name="table_number"><br><br>
+
+        <label for="people">عدد الأشخاص:</label><br>
+        <input type="number" id="people" name="people"><br><br>
+
+        <label for="males">عدد الذكور:</label><br>
+        <input type="number" id="males" name="males"><br><br>
+
+        <label for="females">عدد الإناث:</label><br>
+        <input type="number" id="females" name="females"><br><br>
+
+        <label for="phone">رقم الهاتف:</label><br>
+        <input type="text" id="phone" name="phone"><br><br>
+
+        <label for="qr">QR Code</label>
+        <input type="radio" id="qr" name="code_type" value="qr" checked>
+        <label for="barcode">Barcode</label>
+        <input type="radio" id="barcode" name="code_type" value="barcode"><br><br>
+
+        <input type="submit" value="Generate">
+    </form>
+</body>
+</html>
