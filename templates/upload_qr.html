@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول باستخدام رمز الاستجابة السريعة</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.css') }}">
+    <!-- Include Bootstrap Datepicker -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="alert alert-{{ messages[0][0] }}">
+                {{ messages[0][1] }}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <h3 class="text-center mb-4">تسجيل الدخول باستخدام رمز الاستجابة السريعة</h3>
+    
+    <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="file" class="form-label">اختر صورة رمز الاستجابة السريعة</label>
+            <input type="file" class="form-control" id="file" name="file" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="custom_login_date" class="form-label">تاريخ تسجيل الدخول</label>
+            <input type="text" class="form-control datepicker" id="custom_login_date" name="custom_login_date" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">رفع الصورة</button>
+    </form>
+</div>
+
+<!-- Include jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Include Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<!-- Include Bootstrap Datepicker -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        // Initialize datepicker
+        $('.datepicker').datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true,
+            todayHighlight: true,
+            language: 'ar'
+        });
+        
+        // Set default date to today
+        $('#custom_login_date').datepicker('setDate', new Date());
+    });
+</script>
+</body>
+</html>

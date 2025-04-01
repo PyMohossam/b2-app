@@ -2,35 +2,118 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل جديد</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.css') }}">
+    <!-- Include Bootstrap Datepicker -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
 </head>
-<body>
-    <h1>تسجيل جديد</h1>
-    <form method="POST">
-        <label for="name">الاسم:</label><br>
-        <input type="text" id="name" name="name"><br><br>
+<body class="bg-light">
 
-        <label for="table_number">رقم الطاولة:</label><br>
-        <input type="text" id="table_number" name="table_number"><br><br>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header text-center bg-primary text-white">
+                    <h3>تسجيل جديد</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">الاسم</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
 
-        <label for="people">عدد الأشخاص:</label><br>
-        <input type="number" id="people" name="people"><br><br>
+                        <div class="mb-3">
+                            <label for="table_number" class="form-label">رقم الطاولة</label>
+                            <input type="text" class="form-control" id="table_number" name="table_number" required>
+                        </div>
 
-        <label for="males">عدد الذكور:</label><br>
-        <input type="number" id="males" name="males"><br><br>
+                        <div class="mb-3">
+                            <label for="people" class="form-label">عدد الأشخاص</label>
+                            <input type="number" class="form-control" id="people" name="people" required>
+                        </div>
 
-        <label for="females">عدد الإناث:</label><br>
-        <input type="number" id="females" name="females"><br><br>
+                        <div class="mb-3">
+                            <label for="males" class="form-label">عدد الذكور</label>
+                            <input type="number" class="form-control" id="males" name="males" required>
+                        </div>
 
-        <label for="phone">رقم الهاتف:</label><br>
-        <input type="text" id="phone" name="phone"><br><br>
+                        <div class="mb-3">
+                            <label for="females" class="form-label">عدد الإناث</label>
+                            <input type="number" class="form-control" id="females" name="females" required>
+                        </div>
 
-        <label for="qr">QR Code</label>
-        <input type="radio" id="qr" name="code_type" value="qr" checked>
-        <label for="barcode">Barcode</label>
-        <input type="radio" id="barcode" name="code_type" value="barcode"><br><br>
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">رقم الهاتف</label>
+                            <input type="text" class="form-control" id="phone" name="phone" required>
+                        </div>
 
-        <input type="submit" value="Generate">
-    </form>
+                        <div class="mb-3">
+                            <label for="custom_date" class="form-label">التاريخ</label>
+                            <input type="text" class="form-control datepicker" id="custom_date" name="custom_date" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">نوع الرمز</label><br>
+                            <input type="radio" id="qr" name="code_type" value="qr" checked>
+                            <label for="qr">QR Code</label>
+                            <input type="radio" id="barcode" name="code_type" value="barcode">
+                            <label for="barcode">Barcode</label>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">تسجيل</button>
+                    </form>
+
+                    {% if qr_code %}
+                    <div class="mt-4 text-center">
+                        <h4>QR Code الخاص بك</h4>
+                        <img src="{{ qr_code }}" alt="QR Code" id="qrCodeImage" />
+                        <p class="mt-2">جاري تحميل QR Code...</p>
+                        <a href="{{ qr_code }}" download="user_qr_code.png" class="btn btn-primary mt-3" id="manualDownloadBtn">تحميل الـ QR Code يدويًا</a>
+                    </div>
+                    
+                    <!-- Script to automatically download the QR code -->
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            // Create a temporary anchor element for downloading
+                            const downloadLink = document.createElement('a');
+                            downloadLink.href = "{{ qr_code }}";
+                            downloadLink.download = "user_qr_code.png";
+                            
+                            // Trigger download after a short delay (to ensure page is loaded)
+                            setTimeout(function() {
+                                downloadLink.click();
+                            }, 1000);
+                        });
+                    </script>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Include Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<!-- Include Bootstrap Datepicker -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        // Initialize datepicker
+        $('.datepicker').datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true,
+            todayHighlight: true,
+            language: 'ar'
+        });
+        
+        // Set default date to today
+        $('#custom_date').datepicker('setDate', new Date());
+    });
+</script>
 </body>
 </html>

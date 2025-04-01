@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تقرير تسجيلات الدخول</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12pt;
+            margin: 2cm;
+            direction: rtl;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #333;
+        }
+        .date-range {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: right;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10pt;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>تقرير تسجيلات الدخول</h1>
+    
+    <div class="date-range">
+        الفترة: من {{ start_date }} إلى {{ end_date }}
+    </div>
+    
+    {% if login_records %}
+        <table>
+            <thead>
+                <tr>
+                    <th>الاسم</th>
+                    <th>رقم الهاتف</th>
+                    <th>رقم الطاولة</th>
+                    <th>عدد الأشخاص</th>
+                    <th>تاريخ تسجيل الدخول</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for login, user in login_records %}
+                    <tr>
+                        <td>{{ user.name }}</td>
+                        <td>{{ user.phone }}</td>
+                        <td>{{ user.table_number }}</td>
+                        <td>{{ user.people }}</td>
+                        <td>{{ login.login_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="footer">
+            عدد التسجيلات: {{ login_records|length }} ● تاريخ الطباعة: {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
+        </div>
+    {% else %}
+        <p style="text-align: center;">لا توجد بيانات للفترة المحددة</p>
+    {% endif %}
+</body>
+</html>
