@@ -4,7 +4,6 @@ from datetime import datetime
 import qrcode
 import os
 from sqlalchemy.exc import IntegrityError
-from pyzbar.pyzbar import decode
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 import cv2
@@ -12,6 +11,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import pdfkit
 from flask import make_response
+
 
 
 
@@ -255,14 +255,25 @@ def sign_in():
 
 # Function to decode the QR code from an image
 def decode_qr_code(filepath):
-    # Read the image
-    img = cv2.imread(filepath)
-    # Decode the QR code
-    decoded_objects = decode(img)
-    for obj in decoded_objects:
-        # The QR code contains the user ID (phone number)
-        return obj.data.decode('utf-8')
-    return None
+    """
+    Decode QR code from an image using OpenCV
+    """
+    try:
+        # Read the image
+        img = cv2.imread(filepath)
+        
+        # Initialize QR Code detector
+        qr_detector = cv2.QRCodeDetector()
+        
+        # Detect and decode
+        data, bbox, straight_qrcode = qr_detector.detectAndDecode(img)
+        
+        if data:
+            return data
+        return None
+    except Exception as e:
+        print(f"Error decoding QR code: {str(e)}")
+        return None
 
 # Check if the uploaded file is an allowed image
 def allowed_file(filename):
