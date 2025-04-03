@@ -7,6 +7,18 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.css') }}">
     <!-- Include Bootstrap Datepicker -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+    <style>
+        #image-preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .image-preview {
+            max-height: 150px;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body class="bg-light">
 
@@ -18,7 +30,7 @@
                     <h3>تسجيل جديد</h3>
                 </div>
                 <div class="card-body">
-                    <form method="POST">
+                    <form method="POST" enctype="multipart/form-data">
                         <div class="mb-3">
                             <label for="name" class="form-label">الاسم</label>
                             <input type="text" class="form-control" id="name" name="name" required>
@@ -54,6 +66,13 @@
                             <input type="text" class="form-control datepicker" id="custom_date" name="custom_date" required>
                         </div>
 
+                        <div class="mb-3">
+                            <label for="user_images" class="form-label">صور المستخدم</label>
+                            <input type="file" class="form-control" id="user_images" name="user_images[]" accept="image/*" multiple>
+                            <div class="form-text">يمكنك تحميل عدة صور للمستخدم (اضغط Ctrl أو Cmd لتحديد عدة ملفات)</div>
+                            <div id="image-preview-container" class="mt-2"></div>
+                        </div>
+                        
                         <div class="mb-3">
                             <label class="form-label">نوع الرمز</label><br>
                             <input type="radio" id="qr" name="code_type" value="qr" checked>
@@ -113,6 +132,28 @@
         
         // Set default date to today
         $('#custom_date').datepicker('setDate', new Date());
+        
+        // Preview uploaded images
+        $('#user_images').change(function() {
+            // Clear previous previews
+            $('#image-preview-container').empty();
+            
+            if (this.files && this.files.length > 0) {
+                for (let i = 0; i < this.files.length; i++) {
+                    let file = this.files[i];
+                    let reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        // Create and append new preview
+                        let img = $('<img class="image-preview">');
+                        img.attr('src', e.target.result);
+                        $('#image-preview-container').append(img);
+                    }
+                    
+                    reader.readAsDataURL(file);
+                }
+            }
+        });
     });
 </script>
 </body>
