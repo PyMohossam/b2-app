@@ -11,6 +11,8 @@ import numpy as np
 from datetime import datetime, timedelta
 import pdfkit
 from flask import make_response
+import qrcode
+from PIL import Image
 
 
 
@@ -32,6 +34,7 @@ app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}  # Allowed file
 db = SQLAlchemy(app)
 
 # Define the User table
+# Modified User class with new serial_number field
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -39,10 +42,12 @@ class User(db.Model):
     people = db.Column(db.Integer, nullable=False)
     males = db.Column(db.Integer, nullable=False)
     females = db.Column(db.Integer, nullable=False)
-    phone = db.Column(db.String(15), unique=True, nullable=False)
+    phone = db.Column(db.String(15), nullable=False)
+    serial_number = db.Column(db.String(50), unique=True, nullable=False)
     date = db.Column(db.String(100), nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
-    image_filename = db.Column(db.String(255))  # New field for image filename
+    image_filename = db.Column(db.String(255))
+
 
 
 class UserLogin(db.Model):
@@ -107,43 +112,42 @@ def login_required(f):
 def index():
     return render_template('index.html')
 
-
-
-
-# Then modify the sign_up route to handle multiple images
 @app.route('/sign_up', methods=['GET', 'POST'])
 def sign_up():
-    qr_code_url = None  # To store the QR code URL
-    
+    qr_code_url = None
+    uploads_folder = os.path.join('static', 'uploads')
+    if not os.path.exists(uploads_folder):
+        os.makedirs(uploads_folder)
+
     if request.method == 'POST':
         try:
-            # Get form data
             name = request.form['name']
             table_number = request.form['table_number']
             people = int(request.form['people'])
             males = int(request.form['males'])
             females = int(request.form['females'])
             phone = request.form['phone']
-            
-            # Get custom date from form
+            serial_number = request.form.get('serial_number')
+
             custom_date = request.form.get('custom_date')
             if not custom_date:
                 custom_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             else:
                 custom_date = f"{custom_date} {datetime.now().strftime('%H:%M:%S')}"
-            
-            # Validate gender counts
-            if males + females != people:
-                flash("عدد الذكور والإناث يجب أن يساوي عدد الأشخاص", 'error')
-                return redirect(url_for('sign_up'))
 
-            # Check if phone already exists
-            existing_user = User.query.filter_by(phone=phone).first()
-            if existing_user:
-                flash("رقم الهاتف مسجل مسبقاً", 'error')
-                return redirect(url_for('sign_up'))
-            
-            # Create new user without image first
+            if males + females != people:
+                flash("عدد الذكور والإناث يجب أن يساوي عدد الأشخاص", 'danger')
+                return render_template('sign_up.html', qr_code=None)
+
+            if not serial_number:
+                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                serial_number = f"{timestamp}-{phone}"
+
+            existing_serial = User.query.filter_by(serial_number=serial_number).first()
+            if existing_serial:
+                flash("الرقم التسلسلي مستخدم بالفعل، يرجى استخدام رقم آخر", 'danger')
+                return render_template('sign_up.html', qr_code=None)
+
             new_user = User(
                 name=name,
                 table_number=table_number,
@@ -151,222 +155,165 @@ def sign_up():
                 males=males,
                 females=females,
                 phone=phone,
+                serial_number=serial_number,
                 date=custom_date,
                 password_hash=generate_password_hash(phone),
-                image_filename=None  # We'll handle images separately
+                image_filename=None
             )
 
             db.session.add(new_user)
-            db.session.commit()  # Commit to get the user id
-            
-            # Handle multiple image uploads
+            db.session.commit()
+
             if 'user_images[]' in request.files:
                 uploaded_files = request.files.getlist('user_images[]')
-                
-                # Ensure images folder exists
                 images_folder = os.path.join('static', 'images')
                 if not os.path.exists(images_folder):
                     os.makedirs(images_folder)
-                
-                # Process each uploaded file
+
                 for image_file in uploaded_files:
                     if image_file and image_file.filename != '':
-                        # Make sure the filename is secure
                         secure_image_filename = secure_filename(image_file.filename)
-                        # Create a unique filename to avoid overwrites
                         unique_filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{secure_image_filename}"
-                        
-                        # Save the image
                         image_path = os.path.join(images_folder, unique_filename)
                         image_file.save(image_path)
-                        
-                        # Create image record
+
                         new_image = UserImage(user_id=new_user.id, filename=unique_filename)
                         db.session.add(new_image)
-                
-                # Set the first image as the main profile image if available
+
                 if uploaded_files and uploaded_files[0].filename != '':
                     first_image_filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{secure_filename(uploaded_files[0].filename)}"
                     new_user.image_filename = first_image_filename
                     db.session.commit()
 
-            # Generate QR Code with phone number
-            qr_data = phone
-            img = qrcode.make(qr_data)
 
-            # Save QR code in static/uploads directory
-            uploads_folder = os.path.join('static', 'uploads')
-            if not os.path.exists(uploads_folder):
-                os.makedirs(uploads_folder)
+            # To this:
+            qr_data = serial_number  # Use the user's unique serial number
 
-            qr_code_path = os.path.join(uploads_folder, f'qr_{phone}.png')
-            img.save(qr_code_path)
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_H,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(qr_data)
+            qr.make(fit=True)
 
-            # Set qr_code_url to send the image path to the template
-            qr_code_url = url_for('static', filename=f'uploads/qr_{phone}.png')
+            qr_img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
 
-            flash("تم التسجيل بنجاح!", 'success')
+            logo_path = os.path.join('static', 'logo', 'B2.jpg')
+            if os.path.exists(logo_path):
+                logo = Image.open(logo_path)
+                qr_width, qr_height = qr_img.size
+                logo_size = int(qr_width / 4)
+                logo = logo.resize((logo_size, logo_size))
+                pos = ((qr_width - logo_size) // 2, (qr_height - logo_size) // 2)
+                qr_img.paste(logo, pos)
+
+            qr_code_path = os.path.join(uploads_folder, f'qr_{serial_number}.png')
+            qr_img.save(qr_code_path)
+
+            qr_code_url = url_for('static', filename=f'uploads/qr_{serial_number}.png')
+
+            flash("تم التسجيل بنجاح! يمكنك الآن تحميل الـ QR Code", 'success')
             return render_template('sign_up.html', qr_code=qr_code_url)
 
-        except ValueError:
-            flash("الرجاء إدخال أرقام صحيحة", 'error')
+        except ValueError as e:
+            flash(f"الرجاء إدخال أرقام صحيحة: {str(e)}", 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f"حدث خطأ أثناء التسجيل: {str(e)}", 'error')
+            flash(f"حدث خطأ أثناء التسجيل: {str(e)}", 'danger')
 
     return render_template('sign_up.html', qr_code=qr_code_url)
+
+
+
+
 
 @app.route('/sign_in', methods=['GET', 'POST'])
 def sign_in():
     if request.method == 'POST':
-        # Handle camera scan method
-        if 'qr_result' in request.form:
-            # Get the QR result from the form
-            user_id = request.form['qr_result']
-            
-            # Get custom login date
-            custom_login_date = request.form.get('custom_login_date')
-            if custom_login_date:
-                try:
-                    # Parse the custom date
-                    login_time = datetime.strptime(custom_login_date, '%Y-%m-%d')
-                    # Set time to current time
-                    current_time = datetime.now().time()
-                    login_time = login_time.replace(hour=current_time.hour, minute=current_time.minute, second=current_time.second)
-                except ValueError:
-                    flash("تنسيق التاريخ غير صحيح، يرجى استخدام YYYY-MM-DD", 'error')
-                    return redirect(url_for('sign_in'))
-            else:
-                # Use current date and time if no custom date provided
-                login_time = datetime.now()
-                
-            # Find the user with this phone number (QR content)
-            user = User.query.filter_by(phone=user_id).first()
-            if user:
-                # Record login event with custom date
-                login_record = UserLogin(user_id=user.id, login_time=login_time)
-                db.session.add(login_record)
-                try:
-                    db.session.commit()
-                except Exception as e:
-                    db.session.rollback()
-                    flash(f"Error recording login: {str(e)}", 'error')
-                
-                session['logged_in'] = True
-                session['user_name'] = user.name  # Store user name in session
-                session['user_phone'] = user.phone  # Store user phone in session
-                
-                # Pass user data including image to template
-                user_data = {
-                    'id': user.id,
-                    'name': user.name,
-                    'table_number': user.table_number,
-                    'people': user.people,
-                    'males': user.males,
-                    'females': user.females,
-                    'phone': user.phone,
-                    'image_filename': user.image_filename
-                }
-                
-                # Get all images for this user
-                user_images = UserImage.query.filter_by(user_id=user.id).all()
-                
-                flash(f"مرحباً {user.name}! تم تسجيل الدخول بنجاح.", 'success')
-                return render_template('user_details.html', user=user_data, user_images=user_images)
-            else:
-                flash("لم يتم العثور على المستخدم.", 'error')
-                return redirect(url_for('sign_in'))
-                
-        # Handle file upload method
-        elif 'file' in request.files:
-            # Check if the user uploaded a file
+        # Handle both camera scan and file upload
+        serial_number = None
+        
+        if 'qr_result' in request.form:  # Camera scan
+            serial_number = request.form['qr_result'].strip()
+        elif 'file' in request.files:  # File upload
             file = request.files['file']
-            if file.filename == '':
-                flash('No selected file', 'error')
-                return redirect(request.url)
-            
-            # Check if the file has an allowed extension
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
-                
-                # Ensure upload folder exists
-                if not os.path.exists(app.config['UPLOAD_FOLDER']):
-                    os.makedirs(app.config['UPLOAD_FOLDER'])
-                    
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
                 file.save(filepath)
-    
-                # Get custom login date
-                custom_login_date = request.form.get('custom_login_date')
-                if custom_login_date:
-                    try:
-                        # Parse the custom date
-                        login_time = datetime.strptime(custom_login_date, '%Y-%m-%d')
-                        # Set time to current time
-                        current_time = datetime.now().time()
-                        login_time = login_time.replace(hour=current_time.hour, minute=current_time.minute, second=current_time.second)
-                    except ValueError:
-                        flash("تنسيق التاريخ غير صحيح، يرجى استخدام YYYY-MM-DD", 'error')
-                        return redirect(url_for('sign_in'))
-                else:
-                    # Use current date and time if no custom date provided
-                    login_time = datetime.now()
-    
-                # Decode the QR code from the uploaded image
-                user_id = decode_qr_code(filepath)
-                if user_id:
-                    user = User.query.filter_by(phone=user_id).first()
-                    if user:
-                        # Record login event with custom date
-                        login_record = UserLogin(user_id=user.id, login_time=login_time)
-                        db.session.add(login_record)
-                        try:
-                            db.session.commit()
-                        except Exception as e:
-                            db.session.rollback()
-                            flash(f"Error recording login: {str(e)}", 'error')
-                        
-                        session['logged_in'] = True
-                        session['user_name'] = user.name  # Store user name in session
-                        session['user_phone'] = user.phone  # Store user phone in session
-                        
-                        # Pass user data including image to template
-                        user_data = {
-                            'id': user.id,
-                            'name': user.name,
-                            'table_number': user.table_number,
-                            'people': user.people,
-                            'males': user.males,
-                            'females': user.females,
-                            'phone': user.phone,
-                            'image_filename': user.image_filename
-                        }
-                        
-                        # Get all images for this user
-                        user_images = UserImage.query.filter_by(user_id=user.id).all()
-                        
-                        flash(f"مرحباً {user.name}! تم تسجيل الدخول بنجاح.", 'success')
-                        return render_template('user_details.html', user=user_data, user_images=user_images)
-                    else:
-                        flash("لم يتم العثور على المستخدم.", 'error')
-                        return redirect(url_for('sign_in'))
-                else:
-                    flash("لم يتم التعرف على الرمز في الصورة", 'error')
-                    return redirect(url_for('sign_in'))
-            else:
-                flash('Invalid file format. Only images are allowed.', 'error')
-                return redirect(request.url)
-        else:
-            flash('No method selected for sign in.', 'error')
-            return redirect(url_for('sign_in'))
+                serial_number = decode_qr_code(filepath)
+                os.remove(filepath)  # Clean up uploaded file
+
+        # Validate QR data
+        if not serial_number or len(serial_number) < 5:
+            flash("رمز QR غير صالح", 'error')
+            return redirect(url_for('upload_qr'))
+
+        # Handle login date
+        try:
+            login_date = request.form.get('custom_login_date')
+            login_time = datetime.strptime(login_date, '%Y-%m-%d') if login_date else datetime.now()
+            if login_date:
+                current_time = datetime.now().time()
+                login_time = login_time.replace(hour=current_time.hour, minute=current_time.minute, second=current_time.second)
+        except ValueError:
+            flash("تاريخ غير صحيح", 'error')
+            return redirect(url_for('upload_qr'))
+
+        # Find user and record login
+        user = User.query.filter_by(serial_number=serial_number).first()
+        if not user:
+            flash("مستخدم غير موجود", 'error')
+            return redirect(url_for('upload_qr'))
+
+        try:
+            db.session.add(UserLogin(user_id=user.id, login_time=login_time))
+            db.session.commit()
+            
+            session.update({
+                'logged_in': True,
+                'user_name': user.name,
+                'user_phone': user.phone
+            })
+
+            user_data = {
+                'id': user.id,
+                'name': user.name,
+                'table_number': user.table_number,
+                'people': user.people,
+                'males': user.males,
+                'females': user.females,
+                'phone': user.phone,
+                'serial_number': user.serial_number,
+                'image_filename': user.image_filename
+            }
+            user_images = UserImage.query.filter_by(user_id=user.id).all()
+
+            flash(f"مرحباً {user.name}!", 'success')
+            return render_template('user_details.html', user=user_data, user_images=user_images)
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"خطأ في التسجيل: {str(e)}", 'error')
 
     return render_template('upload_qr.html')
 
 
-# Function to decode the QR code from an image
+
+@app.route('/upload_qr')
+def upload_qr():
+    return render_template('upload_qr.html')
+
+
+
+
+
 def decode_qr_code(filepath):
     """
-    Decode QR code from an image using OpenCV
+    Decode QR code from an image using OpenCV with improved detection
     """
     try:
         # Read the image
@@ -375,11 +322,21 @@ def decode_qr_code(filepath):
         # Initialize QR Code detector
         qr_detector = cv2.QRCodeDetector()
         
+        # Convert to grayscale
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        # Apply thresholding to improve detection
+        _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+        
         # Detect and decode
-        data, bbox, straight_qrcode = qr_detector.detectAndDecode(img)
+        data, bbox, straight_qrcode = qr_detector.detectAndDecode(thresh)
+        
+        if not data and bbox is not None:
+            # Try again with the original image if thresholding didn't work
+            data, bbox, straight_qrcode = qr_detector.detectAndDecode(img)
         
         if data:
-            return data
+            return data.strip()
         return None
     except Exception as e:
         print(f"Error decoding QR code: {str(e)}")
