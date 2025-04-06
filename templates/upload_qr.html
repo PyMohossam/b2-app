@@ -39,7 +39,10 @@
         <div class="card-header">
             <ul class="nav nav-tabs card-header-tabs" id="qrScanTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="camera-tab" data-bs-toggle="tab" data-bs-target="#camera-content" type="button" role="tab" aria-controls="camera-content" aria-selected="true">استخدام الكاميرا</button>
+                    <button class="nav-link active" id="device-tab" data-bs-toggle="tab" data-bs-target="#device-content" type="button" role="tab" aria-controls="device-content" aria-selected="true">قارئ QR خارجي</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="camera-tab" data-bs-toggle="tab" data-bs-target="#camera-content" type="button" role="tab" aria-controls="camera-content" aria-selected="false">استخدام الكاميرا</button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload-content" type="button" role="tab" aria-controls="upload-content" aria-selected="false">رفع صورة</button>
@@ -48,8 +51,24 @@
         </div>
         <div class="card-body">
             <div class="tab-content" id="qrScanTabsContent">
+
+                <!-- External Device QR Scan Tab -->
+                <div class="tab-pane fade show active" id="device-content" role="tabpanel" aria-labelledby="device-tab">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="external_qr" class="form-label">امسح الكود باستخدام الجهاز</label>
+                            <input type="text" class="form-control" id="external_qr" name="qr_result" autofocus required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="custom_login_date_device" class="form-label">تاريخ تسجيل الدخول</label>
+                            <input type="text" class="form-control datepicker" id="custom_login_date_device" name="custom_login_date" required>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">تسجيل الدخول</button>
+                    </form>
+                </div>
+
                 <!-- Camera Scan Tab -->
-                <div class="tab-pane fade show active" id="camera-content" role="tabpanel" aria-labelledby="camera-tab">
+                <div class="tab-pane fade" id="camera-content" role="tabpanel" aria-labelledby="camera-tab">
                     <div class="text-center mb-3">
                         <button id="start-camera" class="btn btn-primary">تشغيل الكاميرا</button>
                         <button id="stop-camera" class="btn btn-danger" style="display:none;">إيقاف الكاميرا</button>
@@ -144,24 +163,52 @@
         let scanInterval;
         
         document.getElementById('start-camera').addEventListener('click', function() {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-                .then(function(stream) {
-                    scanning = true;
-                    video.srcObject = stream;
-                    video.setAttribute('playsinline', true);
-                    video.play();
-                    
-                    // Start scanning loop
-                    scanInterval = setInterval(scanQRCode, 100);
-                    
-                    $('#start-camera').hide();
-                    $('#stop-camera').show();
-                    $('#camera-form').hide(); // Hide form until QR is detected
-                })
-                .catch(function(err) {
-                    console.error('Error accessing camera: ', err);
-                    alert('لا يمكن الوصول إلى الكاميرا. يرجى التحقق من الإذن أو استخدام خيار رفع الصورة.');
-                });
+            // Check if we're on HTTPS or localhost
+            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                alert('للاستخدام الأمثل للكاميرا، يرجى فتح التطبيق عبر HTTPS أو على localhost.');
+                return;
+            }
+
+            // Show loading state
+            $('#start-camera').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> جاري التحميل...');
+            
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: "environment",
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            })
+            .then(function(stream) {
+                scanning = true;
+                video.srcObject = stream;
+                video.setAttribute('playsinline', true);
+                video.play();
+                
+                // Start scanning loop with optimized interval
+                scanInterval = setInterval(scanQRCode, 250); // Reduced from 100ms to 250ms for better performance
+                
+                $('#start-camera').hide();
+                $('#stop-camera').show();
+                $('#camera-form').hide();
+            })
+            .catch(function(err) {
+                console.error('Error accessing camera: ', err);
+                let errorMsg = 'لا يمكن الوصول إلى الكاميرا.';
+                
+                if (err.name === 'NotAllowedError') {
+                    errorMsg += ' يرجى منح الإذن لاستخدام الكاميرا.';
+                } else if (err.name === 'NotFoundError') {
+                    errorMsg += ' لم يتم العثور على كاميرا خلفية.';
+                } else if (err.name === 'NotReadableError') {
+                    errorMsg += ' الكاميرا قيد الاستخدام من قبل تطبيق آخر.';
+                }
+                
+                alert(errorMsg + ' يمكنك استخدام خيار رفع الصورة بدلاً من ذلك.');
+            })
+            .finally(() => {
+                $('#start-camera').prop('disabled', false).text('تشغيل الكاميرا');
+            });
         });
         
         document.getElementById('stop-camera').addEventListener('click', function() {
@@ -185,50 +232,98 @@
         }
         
         function scanQRCode() {
-            if (video.readyState === video.HAVE_ENOUGH_DATA && scanning) {
+            if (!scanning || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+            try {
+                // Set canvas dimensions to match video
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
+                
+                // Draw video frame to canvas
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                // Get image data with reduced resolution for better performance
+                const scale = 0.5; // Reduce resolution for better performance
+                const scaledWidth = canvas.width * scale;
+                const scaledHeight = canvas.height * scale;
+                
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = scaledWidth;
+                tempCanvas.height = scaledHeight;
+                const tempContext = tempCanvas.getContext('2d');
+                tempContext.drawImage(canvas, 0, 0, scaledWidth, scaledHeight);
+                
+                const imageData = tempContext.getImageData(0, 0, scaledWidth, scaledHeight);
+                
+                // Try to decode QR code
                 const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                    inversionAttempts: "dontInvert",
+                    inversionAttempts: "attemptBoth", // Try both inverted and normal
                 });
                 
                 if (code) {
-                    console.log("QR Code detected", code.data);
-                    
-                    // Stop scanning
-                    clearInterval(scanInterval);
-                    scanning = false;
-                    
-                    // Stop camera but keep video frozen with QR visible
-                    if (video.srcObject) {
-                        video.srcObject.getTracks().forEach(track => track.stop());
+                    // Validate QR code data format
+                    if (code.data && code.data.length >= 5) { // Minimum length check
+                        console.log("QR Code detected", code.data);
+                        
+                        // Stop scanning
+                        clearInterval(scanInterval);
+                        scanning = false;
+                        
+                        // Stop camera but keep video frozen with QR visible
+                        if (video.srcObject) {
+                            video.srcObject.getTracks().forEach(track => track.stop());
+                        }
+                        
+                        // Scale QR code location back to original canvas size
+                        const scaleFactor = 1/scale;
+                        code.location.topLeftCorner.x *= scaleFactor;
+                        code.location.topLeftCorner.y *= scaleFactor;
+                        code.location.topRightCorner.x *= scaleFactor;
+                        code.location.topRightCorner.y *= scaleFactor;
+                        code.location.bottomRightCorner.x *= scaleFactor;
+                        code.location.bottomRightCorner.y *= scaleFactor;
+                        code.location.bottomLeftCorner.x *= scaleFactor;
+                        code.location.bottomLeftCorner.y *= scaleFactor;
+                        
+                        // Set the QR result to the hidden input
+                        document.getElementById('qr-result').value = code.data;
+                        
+                        // Draw a border around the QR code on original canvas
+                        context.beginPath();
+                        context.lineWidth = 5;
+                        context.strokeStyle = "#00FF00"; // Green for success
+                        context.moveTo(code.location.topLeftCorner.x, code.location.topLeftCorner.y);
+                        context.lineTo(code.location.topRightCorner.x, code.location.topRightCorner.y);
+                        context.lineTo(code.location.bottomRightCorner.x, code.location.bottomRightCorner.y);
+                        context.lineTo(code.location.bottomLeftCorner.x, code.location.bottomLeftCorner.y);
+                        context.lineTo(code.location.topLeftCorner.x, code.location.topLeftCorner.y);
+                        context.stroke();
+                        
+                        // Show the form for submitting the date
+                        $('#camera-form').show();
+                        $('#stop-camera').hide();
+                        $('#start-camera').text('إعادة المسح').show();
                     }
-                    
-                    // Set the QR result to the hidden input
-                    document.getElementById('qr-result').value = code.data;
-                    
-                    // Draw a border around the QR code
-                    context.beginPath();
-                    context.lineWidth = 5;
-                    context.strokeStyle = "#FF0000";
-                    context.moveTo(code.location.topLeftCorner.x, code.location.topLeftCorner.y);
-                    context.lineTo(code.location.topRightCorner.x, code.location.topRightCorner.y);
-                    context.lineTo(code.location.bottomRightCorner.x, code.location.bottomRightCorner.y);
-                    context.lineTo(code.location.bottomLeftCorner.x, code.location.bottomLeftCorner.y);
-                    context.lineTo(code.location.topLeftCorner.x, code.location.topLeftCorner.y);
-                    context.stroke();
-                    
-                    // Show the form for submitting the date
-                    $('#camera-form').show();
-                    $('#stop-camera').hide();
-                    $('#start-camera').text('إعادة المسح').show();
                 }
+            } catch (err) {
+                console.error('Error scanning QR code:', err);
             }
         }
         
+
+
+        $('#custom_login_date_device').datepicker({
+    format: 'yyyy-mm-dd',
+    autoclose: true,
+    todayHighlight: true,
+    language: 'ar'
+});
+$('#custom_login_date_device').datepicker('setDate', new Date());
+
+
+
+
+
         // Submit the camera form
         $('#camera-form').on('submit', function(e) {
             e.preventDefault();
