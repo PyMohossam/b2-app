@@ -263,43 +263,159 @@ def sign_in():
             flash("تاريخ غير صحيح", 'error')
             return redirect(url_for('upload_qr'))
 
-        # Find user and record login
+        # Find user
         user = User.query.filter_by(serial_number=serial_number).first()
         if not user:
             flash("مستخدم غير موجود", 'error')
             return redirect(url_for('upload_qr'))
 
-        try:
-            db.session.add(UserLogin(user_id=user.id, login_time=login_time))
-            db.session.commit()
-            
-            session.update({
-                'logged_in': True,
-                'user_name': user.name,
-                'user_phone': user.phone
-            })
+        # Check if user has already logged in today
+        # Get start and end of the selected day
+        start_of_day = login_time.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_day = login_time.replace(hour=23, minute=59, second=59, microsecond=999999)
+        
+        # Check for existing login in this day
+        existing_login = UserLogin.query.filter(
+            UserLogin.user_id == user.id,
+            UserLogin.login_time >= start_of_day,
+            UserLogin.login_time <= end_of_day
+        ).first()
+        
+        if existing_login:
+            # User has already logged in today, just show their details
+            flash(f"مرحباً {user.name}! تم تسجيل دخولك سابقاً اليوم في {existing_login.login_time.strftime('%H:%M:%S')}", 'info')
+        else:
+            # User hasn't logged in today, record the new login
+            try:
+                new_login = UserLogin(user_id=user.id, login_time=login_time)
+                db.session.add(new_login)
+                db.session.commit()
+                flash(f"مرحباً {user.name}! تم تسجيل دخولك بنجاح", 'success')
+            except Exception as e:
+                db.session.rollback()
+                flash(f"خطأ في التسجيل: {str(e)}", 'error')
+                return redirect(url_for('upload_qr'))
 
-            user_data = {
-                'id': user.id,
-                'name': user.name,
-                'table_number': user.table_number,
-                'people': user.people,
-                'males': user.males,
-                'females': user.females,
-                'phone': user.phone,
-                'serial_number': user.serial_number,
-                'image_filename': user.image_filename
-            }
-            user_images = UserImage.query.filter_by(user_id=user.id).all()
+        # Set session data
+        session.update({
+            'logged_in': True,
+            'user_name': user.name,
+            'user_phone': user.phone
+        })
 
-            flash(f"مرحباً {user.name}!", 'success')
-            return render_template('user_details.html', user=user_data, user_images=user_images)
+        # Prepare user data for display
+        user_data = {
+            'id': user.id,
+            'name': user.name,
+            'table_number': user.table_number,
+            'people': user.people,
+            'males': user.males,
+            'females': user.females,
+            'phone': user.phone,
+            'serial_number': user.serial_number,
+            'image_filename': user.image_filename
+        }
+        user_images = UserImage.query.filter_by(user_id=user.id).all()
 
-        except Exception as e:
-            db.session.rollback()
-            flash(f"خطأ في التسجيل: {str(e)}", 'error')
+        return render_template('user_details.html', user=user_data, user_images=user_images)
 
     return render_template('upload_qr.html')
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        try:
+            # Get form data
+            name = request.form['name']
+            phone = request.form['phone']
+            email = request.form.get('email', '')
+            age = request.form.get('age', None)
+            gender = request.form.get('gender', 'male')
+            
+            # Basic validation
+            if len(name) < 3:
+                flash("الاسم يجب أن يتكون من 3 أحرف على الأقل", 'danger')
+                return render_template('register.html')
+            
+            if len(phone) < 10:
+                flash("يرجى إدخال رقم هاتف صحيح", 'danger')
+                return render_template('register.html')
+            
+            # Generate serial number
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            serial_number = f"{timestamp}-{phone}"
+            
+            # Create new user
+            new_user = User(
+                name=name,
+                phone=phone,
+                serial_number=serial_number,
+                date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                password_hash=generate_password_hash(phone),
+                # Default values for other required fields in your User model
+                table_number="N/A",
+                people=1,
+                males=1 if gender == 'male' else 0,
+                females=1 if gender == 'female' else 0,
+                image_filename=None
+            )
+            
+            # Add email and age if provided
+            # These would need to be added to your User model
+            if email:
+                setattr(new_user, 'email', email)
+            if age and age.isdigit():
+                setattr(new_user, 'age', int(age))
+            
+            db.session.add(new_user)
+            db.session.commit()
+            
+            # Generate QR code
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_H,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(serial_number)
+            qr.make(fit=True)
+            
+            qr_img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
+            
+            # Add logo to QR code
+            logo_path = os.path.join('static', 'logo', 'B2.jpg')
+            if os.path.exists(logo_path):
+                logo = Image.open(logo_path)
+                qr_width, qr_height = qr_img.size
+                logo_size = int(qr_width / 4)
+                logo = logo.resize((logo_size, logo_size))
+                pos = ((qr_width - logo_size) // 2, (qr_height - logo_size) // 2)
+                qr_img.paste(logo, pos)
+            
+            # Save QR code
+            uploads_folder = os.path.join('static', 'uploads')
+            if not os.path.exists(uploads_folder):
+                os.makedirs(uploads_folder)
+                
+            qr_code_path = os.path.join(uploads_folder, f'qr_{serial_number}.png')
+            qr_img.save(qr_code_path)
+            
+            qr_code_url = url_for('static', filename=f'uploads/qr_{serial_number}.png')
+            
+            flash("تم التسجيل بنجاح!", 'success')
+            return render_template('registration_success.html', 
+                                  user=new_user, 
+                                  qr_code=qr_code_url)
+        
+        except IntegrityError:
+            db.session.rollback()
+            flash("خطأ في التسجيل. قد يكون رقم الهاتف مسجل مسبقًا.", 'danger')
+        except Exception as e:
+            db.session.rollback()
+            flash(f"حدث خطأ أثناء التسجيل: {str(e)}", 'danger')
+    
+    return render_template('register.html')
 
 
 
@@ -443,12 +559,17 @@ def view_logged_in_users():
         ).order_by(
             UserLogin.login_time.desc()
         ).all()
+        total_count = len(login_records)
+        total_people = sum(user.people for _, user in login_records)
+
         
         return render_template(
             'view_logged_in_users.html', 
             login_records=login_records,
             start_date=start_date.strftime('%Y-%m-%d'),
-            end_date=end_date.strftime('%Y-%m-%d')
+            end_date=end_date.strftime('%Y-%m-%d'),
+            total_count=total_count,
+            total_people=total_people
         )
     except Exception as e:
         flash(f"حدث خطأ أثناء جلب بيانات تسجيل الدخول: {str(e)}", 'error')
