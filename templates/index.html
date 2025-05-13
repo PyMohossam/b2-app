@@ -27,9 +27,13 @@
         <p>من هنا يمكنك الوصول إلى صفحات التسجيل والتقارير.</p>
     </div>
 
+
     <div class="row">
         <div class="col-md-6">
             <a href="{{ url_for('sign_up') }}" class="btn btn-success w-100 mb-3">تسجيل جديد</a>
+        </div>
+        <div class="col-md-6">
+            <a href="{{ url_for('register') }}" class="btn btn-primary w-100 mb-3">التسجيل المبسط</a>
         </div>
         <div class="col-md-6">
             <a href="{{ url_for('view_users') }}" class="btn btn-info w-100 mb-3">عرض الزوار</a>
@@ -38,6 +42,13 @@
             <a href="{{ url_for('view_logged_in_users') }}" class="btn btn-warning w-100 mb-3">عرض المستخدمين الذين سجلوا الدخول</a>
         </div>
     </div>
+
+
+
+
+
+
+
     
     <a href="{{ url_for('logout') }}" class="btn btn-danger w-100">تسجيل الخروج</a>
 
