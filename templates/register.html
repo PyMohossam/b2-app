@@ -6,21 +6,67 @@
     <title>تسجيل جديد</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.css') }}">
     <style>
-        body {
-            direction: rtl;
-            text-align: right;
+    body {
+        direction: rtl;
+        text-align: right;
+    }
+    .form-control:focus {
+        border-color: #28a745;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+    }
+    .required-field::after {
+        content: " *";
+        color: red;
+    }
+
+    /* Fade-in effect */
+    .fade-in {
+        opacity: .5;
+        transform: translateY(20px);
+        animation: fadeInUp 1s ease-out forwards;
+        transition: opacity 0.3s;
+    }
+    .fade-in.active {
+        opacity: 1 !important;
+    }
+
+    @keyframes fadeInUp {
+        to {
+            opacity: 0.5;
+            transform: translateY(0);
         }
-        .form-control:focus {
-            border-color: #28a745;
-            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
-        }
-        .required-field::after {
-            content: " *";
-            color: red;
-        }
+    }
     </style>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fadeCard = document.querySelector('.fade-in');
+        const inputs = document.querySelectorAll('input');
+
+        inputs.forEach(input => {
+            input.addEventListener('input', function() {
+                fadeCard.classList.add('active');
+            });
+        });
+    });
+    </script>
+
 </head>
 <body class="bg-light">
+
+
+<div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; overflow: hidden;">
+    <video autoplay muted loop playsinline
+           style="width: 100vw; height: 100vh; object-fit: cover;">
+        <source src="{{ url_for('static', filename='videos/B2_regiester.mp4') }}" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+</div>
+
+
+
+
+
+
 
 <div class="container mt-5">
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -33,28 +79,29 @@
 
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="card shadow">
+            <div class="card shadow fade-in">
                 <div class="card-header text-center bg-primary text-white">
                     <div class="text-center mb-3">
                         <img src="{{ url_for('static', filename='logo/B2.jpg') }}" alt="Logo"
                              class="img-fluid shadow-sm rounded"
                              style="max-height: 120px;">
                     </div>
-                    <h3>تسجيل جديد</h3>
+                    <h3 class="mb-2">Welcome to B2</h3>
+                    <p class="lead mb-0">We wish you an easy registration and a joyful experience with us.<br>Join us and become part of our wonderful community.</p>
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('register') }}">
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="name" class="form-label required-field">الاسم الكامل</label>
+                                <label for="name" class="form-label required-field"> Full name</label>
                                 <input type="text" class="form-control" id="name" name="name" required>
                             </div>
                             <div class="col-md-6">
-                                <label for="phone" class="form-label required-field">رقم الهاتف</label>
+                                <label for="phone" class="form-label required-field">Phone Number </label>
                                 <input type="tel" class="form-control" id="phone" name="phone" 
                                        pattern="[0-9]{10,15}" 
                                        placeholder="01x xxx xxx xxx" required>
-                                <small class="text-muted">يرجى إدخال رقم الهاتف بدون رموز</small>
+                                <small class="text-muted">Please enter the phone number without symbols</small>
                             </div>
                         </div>                        
 
