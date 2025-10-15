@@ -1,4 +1,4 @@
-
+gunicorn==21.2.0
 alembic==1.15.2
 altgraph==0.17.4
 arabic-reshaper==3.0.0
@@ -38,4 +38,5 @@ SQLAlchemy==2.0.40
 tkcalendar==1.6.1
 typing_extensions==4.13.0
 Werkzeug==3.1.3
+
 
