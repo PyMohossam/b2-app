@@ -31,10 +31,11 @@ python-barcode==0.15.1
 python-bidi==0.6.6
 pywin32-ctypes==0.2.3
 pyzbar==0.1.9
-pyzxing==1.0.2
+pyzxing==1.1.1
 qrcode==8.0
 setuptools==78.1.0
 SQLAlchemy==2.0.40
 tkcalendar==1.6.1
 typing_extensions==4.13.0
 Werkzeug==3.1.3
+
